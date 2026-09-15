@@ -3,8 +3,8 @@
 
 LOOKUP=$1
 LENGTH=${#LOOKUP}
-for ((i=0;i< $LENGTH;i++)); do
-    grep ${LOOKUP:$i:1} /home/chachi/personal/chinese/chinese-xingshu-3000/word_index
+for ((i = 0; i < $LENGTH; i++)); do
+    grep ${LOOKUP:$i:1} /home/chachi/Documents/code/projects/chinese-xingshu-3000/word_index
 done
 
 # grep -E $(echo "$1" | sed -e 's/./&|/g; s/|$//') /home/chachi/personal/chinese/word_index.csv
