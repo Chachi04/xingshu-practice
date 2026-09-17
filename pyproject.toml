@@ -1,11 +1,9 @@
 [project]
-name = "chinese-xingshu-3000"
+name = "xingshu-practice"
 version = "0.1.0"
-description = "Add your description here"
+description = "A practice tool for Chinese Xingshu calligraphy."
 readme = "README.md"
-authors = [
-    { name = "Chachi", email = "w.jiaqi004@gmail.com" }
-]
+authors = [{ name = "Chachi", email = "w.jiaqi004@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.5.3",
@@ -14,7 +12,8 @@ dependencies = [
 ]
 
 [project.scripts]
-chinese-xingshu-3000 = "chinese_xingshu_3000:main"
+chinese-xingshu-3000 = "search:main"
+split_chars = "split_chars:main"
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]
