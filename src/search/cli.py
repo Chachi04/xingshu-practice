@@ -8,6 +8,7 @@ only decides how results are formatted and what the exit code is.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -80,6 +81,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="annotate each path with its character, book and cell",
     )
+    parser.add_argument(
+        "--json",
+        dest="as_json",
+        action="store_true",
+        help="emit one JSON object per input character, misses included",
+    )
     return parser
 
 
@@ -94,6 +101,35 @@ def _format(rendering: Rendering, *, verbose: bool) -> str:
     return (
         f"{rendering.char}  {rendering.sheet.name}  {rendering.cell}  {rendering.path}"
     )
+
+
+def _as_json(
+    results: list[tuple[str, list[Rendering]]], *, show_all: bool
+) -> list[dict]:
+    """Shape lookup results for a machine reader.
+
+    One object per input character, in order, with an empty ``renderings`` list
+    where nothing was found. The bare-path output cannot express a miss -- it
+    simply prints fewer lines than there were characters, leaving the caller
+    unable to tell *which* position was skipped -- so anything that needs to
+    line results up against the input wants this instead.
+    """
+    return [
+        {
+            "char": char,
+            "renderings": [
+                {
+                    "sheet": rendering.sheet.name,
+                    "page": rendering.cell.page,
+                    "row": rendering.cell.row,
+                    "col": rendering.cell.col,
+                    "path": str(rendering.path),
+                }
+                for rendering in (renderings if show_all else renderings[:1])
+            ],
+        }
+        for char, renderings in results
+    ]
 
 
 def _format_problem(problem: Problem) -> str:
@@ -113,15 +149,25 @@ def cmd_search(args: argparse.Namespace, library: Library) -> int:
     pipes into an image viewer. Characters that did not resolve are reported on
     stderr and make the command exit non-zero -- a partial result is still
     useful, but the caller needs to know it was partial.
-    """
-    missing: list[str] = []
 
-    for char, renderings in library.lookup(args.text, args.sheet):
-        if not renderings:
-            missing.append(char)
-            continue
-        for rendering in renderings if args.show_all else renderings[:1]:
-            print(_format(rendering, verbose=args.verbose))
+    ``--json`` replaces the paths with a structure that keeps every input
+    character, miss included; the exit code and the stderr line are the same
+    either way.
+    """
+    results = library.lookup(args.text, args.sheet)
+    missing = [char for char, renderings in results if not renderings]
+
+    if args.as_json:
+        json.dump(
+            _as_json(results, show_all=args.show_all),
+            sys.stdout,
+            ensure_ascii=False,
+        )
+        print()
+    else:
+        for _, renderings in results:
+            for rendering in renderings if args.show_all else renderings[:1]:
+                print(_format(rendering, verbose=args.verbose))
 
     if missing:
         print(f"search: no rendering for {' '.join(missing)}", file=sys.stderr)
