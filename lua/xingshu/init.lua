@@ -2,6 +2,7 @@
 ---
 --- `:Xingshu` opens a floating input; renderings appear beneath it as you type,
 --- fetched from this project's `search` CLI.
+local backend = require("xingshu.backend")
 local config = require("xingshu.config")
 local render = require("xingshu.render")
 local search = require("xingshu.search")
@@ -26,14 +27,13 @@ local augroup = vim.api.nvim_create_augroup("Xingshu", { clear = true })
 ---@return boolean
 local function image_support()
 	if supported == nil then
-		if type(vim.ui) ~= "table" or type(vim.ui.img) ~= "table" then
-			supported = false
-		else
-			local ok, result = pcall(vim.ui.img._supported)
-			supported = ok and result == true
-			if not supported then
-				vim.notify("xingshu: terminal does not support images; showing paths instead", vim.log.levels.WARN)
-			end
+		local ok, reason = backend.supported()
+		supported = ok
+		if not ok then
+			vim.notify(
+				("xingshu: showing paths instead of images (%s)"):format(reason or "unsupported terminal"),
+				vim.log.levels.WARN
+			)
 		end
 	end
 	return supported
@@ -172,6 +172,8 @@ end
 function M.setup(opts)
 	config.setup(opts)
 	search.reset()
+	backend.reset()
+	supported = nil
 end
 
 return M

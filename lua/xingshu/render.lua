@@ -4,6 +4,7 @@
 --- a bare `ESC[row;colH` before placing. Images therefore do not scroll, do not
 --- follow a window, and are not cleaned up by Nvim. Everything here exists to
 --- keep placements aligned to a fixed float and to guarantee they are deleted.
+local backend = require("xingshu.backend")
 local config = require("xingshu.config")
 
 local M = {}
@@ -43,7 +44,7 @@ end
 ---@param state table
 function M.clear(state)
 	for _, id in ipairs(state.images or {}) do
-		pcall(vim.ui.img.del, id)
+		pcall(backend.del, id)
 	end
 	state.images = {}
 end
@@ -101,7 +102,7 @@ local function place(state, anchor, index, path, opts)
 		return
 	end
 
-	local ok, id = pcall(vim.ui.img.set, data, {
+	local ok, id = pcall(backend.set, data, {
 		row = anchor.row + line * height,
 		col = anchor.col + column,
 		width = opts.cell_width,

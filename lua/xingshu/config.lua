@@ -21,6 +21,7 @@ end
 ---@field zindex integer image stacking order; must beat the float's own
 ---@field width integer applet width in cells
 ---@field border string|string[] border passed to `nvim_open_win`
+---@field force_supported boolean? override image-capability detection entirely
 local defaults = {
 	cmd = { "uv", "run", "--project", repo_root(), "search" },
 	cell_width = 8,
@@ -30,6 +31,7 @@ local defaults = {
 	zindex = 200,
 	width = 64,
 	border = "rounded",
+	force_supported = nil,
 }
 
 ---@type xingshu.Config
