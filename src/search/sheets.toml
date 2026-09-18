@@ -1,0 +1,29 @@
+# Registry of source books.
+#
+# Each [sheets.<name>] table is matched by a transcription at
+# sheets/<name>.json; the two are cross-checked when the library loads.
+#
+#   dir     image directory, relative to the images root (see search.paths)
+#   pattern how a cell is named on disk, used to build filenames and to read
+#           them back -- the only place this convention is written down
+#   pages/rows/cols   grid size, used to reject impossible cells
+
+default_order = ["3500-chars", "3000-chars"]
+
+[sheets.3500-chars]
+title = "常用3500字硬笔行书"
+source = "public/常用3500字硬笔行书.pdf"
+dir = "3500-chars"
+pattern = "page{page:02d}_row{row:02d}_col{col:02d}.png"
+pages = 19
+rows = 16
+cols = 12
+
+[sheets.3000-chars]
+title = "3000行书常用"
+source = "public/3000行书常用.pdf"
+dir = "3000-chars"
+pattern = "page{page:02d}_row{row:02d}_col{col:02d}.png"
+pages = 20
+rows = 15
+cols = 11
