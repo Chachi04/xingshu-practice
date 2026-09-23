@@ -29,11 +29,24 @@ function M.slots(canvas_width, cell_width, gap)
 	return math.max(1, math.floor((canvas_width + gap) / (cell_width + gap)))
 end
 
+--- Blank lines between rows of images, matching the gap between columns.
+---
+--- A cell is about twice as tall as it is wide, so the same visual margin is
+--- half as many lines -- but never less than one, or rows would touch.
+---@param gap integer
+---@return integer
+function M.row_gap(gap)
+	if gap <= 0 then
+		return 0
+	end
+	return math.max(1, math.floor(gap / 2 + 0.5))
+end
+
 --- Total canvas height in cells for the configured layout.
 ---@param opts xingshu.Config
 ---@return integer
 function M.canvas_height(opts)
-	return M.cell_height(opts.cell_width) * opts.max_rows
+	return M.cell_height(opts.cell_width) * opts.max_rows + M.row_gap(opts.gap) * (opts.max_rows - 1)
 end
 
 --- Delete every image this state has placed, and any path list drawn in
@@ -115,7 +128,7 @@ local function place(state, anchor, index, path, opts)
 	end
 
 	local ok, id = pcall(backend.set, data, {
-		row = anchor.row + line * height,
+		row = anchor.row + line * (height + M.row_gap(opts.gap)),
 		col = anchor.col + column,
 		width = opts.cell_width,
 		height = height,
