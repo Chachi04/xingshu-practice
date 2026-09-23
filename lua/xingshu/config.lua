@@ -14,6 +14,7 @@ end
 
 ---@class xingshu.Config
 ---@field cmd string[] argv prefix for the `search` CLI
+---@field practice_cmd string[] argv prefix for the `practice` CLI, which owns the cards
 ---@field cell_width integer image width in terminal cells
 ---@field gap integer blank cells between images
 ---@field max_rows integer rows of images before the canvas stops growing
@@ -24,6 +25,7 @@ end
 ---@field force_supported boolean? override image-capability detection entirely
 local defaults = {
 	cmd = { "uv", "run", "--project", repo_root(), "search" },
+	practice_cmd = { "uv", "run", "--project", repo_root(), "practice" },
 	cell_width = 8,
 	gap = 1,
 	max_rows = 3,

@@ -8,10 +8,11 @@ scripted: ``list`` prints the ids that ``edit`` and ``rm`` take.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from practice.deck import ENV_VAR, Deck, open_deck
+from practice.deck import ENV_VAR, Card, Deck, open_deck
 from practice.graphics import MODES
 from search.paths import ENV_VAR as IMAGES_ENV_VAR
 
@@ -73,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     listing = commands.add_parser("list", aliases=["ls"], help="print cards with their ids")
     _add_filters(listing)
+    listing.add_argument("--json", action="store_true", help="print the cards as a JSON list")
 
     add = commands.add_parser("add", help="add a card")
     add.add_argument("hanzi", help="the sentence in characters")
@@ -92,6 +94,9 @@ def build_parser() -> argparse.ArgumentParser:
     star = edit.add_mutually_exclusive_group()
     star.add_argument("--star", dest="starred", action="store_const", const=True)
     star.add_argument("--unstar", dest="starred", action="store_const", const=False)
+    learn = edit.add_mutually_exclusive_group()
+    learn.add_argument("--learn", dest="learnt", action="store_const", const=True)
+    learn.add_argument("--unlearn", dest="learnt", action="store_const", const=False)
 
     help_cmd = commands.add_parser("help", help="show help for practice or one command")
     help_cmd.add_argument(
@@ -109,6 +114,7 @@ def _add_filters(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--hsk", type=int, help="only this HSK level")
     parser.add_argument("--set", type=int, help="only this set number")
     parser.add_argument("--starred", action="store_true", help="only starred cards")
+    parser.add_argument("--learnt", action="store_true", help="only learnt cards")
 
 
 def suggest_pinyin(hanzi: str) -> str:
@@ -123,11 +129,20 @@ def suggest_pinyin(hanzi: str) -> str:
     return " ".join(lazy_pinyin(hanzi, style=Style.TONE, neutral_tone_with_five=False))
 
 
+def format_card(card: Card) -> str:
+    """One card as a line: ``id  hsk-set  ★✓ hanzi  pinyin``."""
+    marks = ("★" if card.starred else " ") + ("✓" if card.learnt else " ")
+    return f"{card.id}  {card.hsk}-{card.set:<3} {marks} {card.hanzi}  {card.pinyin}"
+
+
 def cmd_list(args: argparse.Namespace, deck: Deck) -> int:
-    """Print matching cards, one per line: ``id  hsk-set  hanzi  pinyin``."""
-    for card in deck.select(args.hsk, args.set, args.starred):
-        star = "★" if card.starred else " "
-        print(f"{card.id}  {card.hsk}-{card.set:<3} {star} {card.hanzi}  {card.pinyin}")
+    """Print matching cards, one per line, or as JSON for other programs."""
+    cards = deck.select(args.hsk, args.set, args.starred, args.learnt)
+    if args.json:
+        print(json.dumps([card.to_dict() for card in cards], ensure_ascii=False))
+        return EXIT_OK
+    for card in cards:
+        print(format_card(card))
     return EXIT_OK
 
 
@@ -166,10 +181,10 @@ def cmd_edit(args: argparse.Namespace, deck: Deck) -> int:
         hsk=args.hsk,
         set=args.set,
         starred=args.starred,
+        learnt=args.learnt,
     )
     deck.save()
-    star = "★" if card.starred else " "
-    print(f"{card.id}  {card.hsk}-{card.set:<3} {star} {card.hanzi}  {card.pinyin}")
+    print(format_card(card))
     return EXIT_OK
 
 
@@ -181,7 +196,7 @@ def cmd_practice(args: argparse.Namespace, deck: Deck) -> int:
     start = None
     title = ""
     if args.command == "run":
-        start = deck.select(args.hsk, args.set, args.starred)
+        start = deck.select(args.hsk, args.set, args.starred, args.learnt)
         if not start:
             print("practice: no cards match", file=sys.stderr)
             return EXIT_INCOMPLETE
@@ -189,6 +204,8 @@ def cmd_practice(args: argparse.Namespace, deck: Deck) -> int:
         title = " · ".join(p for p in parts if p) or "All cards"
         if args.starred:
             title += " ★"
+        if args.learnt:
+            title += " ✓"
 
     notes: list[str] = []
     try:

@@ -142,6 +142,7 @@ class SetScreen(Screen):
     ]
 
     STARRED = "starred"
+    LEARNT = "learnt"
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -166,13 +167,17 @@ class SetScreen(Screen):
         options.add_option(
             Option(f"★  All starred  ({len(starred)} cards)", id=self.STARRED)
         )
+        learnt = deck.select(learnt=True)
+        options.add_option(Option(f"✓  All learnt  ({len(learnt)} cards)", id=self.LEARNT))
         for (hsk, number), cards in deck.sets().items():
             stars = sum(card.starred for card in cards)
+            known = sum(card.learnt for card in cards)
             label = f"HSK {hsk} · Set {number:<3} ({len(cards)} cards"
-            label += f", {stars}★)" if stars else ")"
-            options.add_option(Option(label, id=f"{hsk}-{number}"))
+            label += f", {stars}★" if stars else ""
+            label += f", {known}✓" if known else ""
+            options.add_option(Option(label + ")", id=f"{hsk}-{number}"))
 
-        options.highlighted = highlighted if highlighted is not None else 1
+        options.highlighted = highlighted if highlighted is not None else 2
         options.focus()
 
     def action_toggle_shuffle(self) -> None:
@@ -188,6 +193,8 @@ class SetScreen(Screen):
         key = event.option.id
         if key == self.STARRED:
             cards, title = deck.select(starred=True), "All starred"
+        elif key == self.LEARNT:
+            cards, title = deck.select(learnt=True), "All learnt"
         else:
             hsk, number = (int(part) for part in key.split("-"))
             cards, title = deck.select(hsk=hsk, set=number), f"HSK {hsk} · Set {number}"
@@ -206,6 +213,7 @@ class CardScreen(Screen):
         Binding("right,l,n", "next", "Next"),
         Binding("left,h,p", "previous", "Prev"),
         Binding("s", "star", "Star"),
+        Binding("L", "learn", "Learnt"),
         Binding("plus,equals_sign", "zoom(1)", "Bigger"),
         Binding("minus", "zoom(-1)", "Smaller"),
         Binding("escape,q", "leave", "Back"),
@@ -291,9 +299,10 @@ class CardScreen(Screen):
             hanzi.update("")
 
         star = "★" if card.starred else "☆"
+        learnt = "✓ learnt" if card.learnt else "· new"
         side = "back" if self.flipped else "front"
         self.query_one("#status", Static).update(
-            f"{self.index + 1} / {len(self.cards)}   {star}   {side}   id {card.id}"
+            f"{self.index + 1} / {len(self.cards)}   {star}   {learnt}   {side}   id {card.id}"
         )
 
     def watch_index(self) -> None:
@@ -324,12 +333,19 @@ class CardScreen(Screen):
             self.index -= 1
 
     def action_star(self) -> None:
+        self._toggle("starred")
+
+    def action_learn(self) -> None:
+        self._toggle("learnt")
+
+    def _toggle(self, flag: str) -> None:
+        """Flip a boolean field of the current card and save, undoing on failure."""
         card = self.card
-        card.starred = not card.starred
+        setattr(card, flag, not getattr(card, flag))
         try:
             self.app.deck.save()
         except OSError as exc:
-            card.starred = not card.starred
+            setattr(card, flag, not getattr(card, flag))
             self.notify(f"Could not save: {exc}", severity="error")
         self._render_card()
 

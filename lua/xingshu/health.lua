@@ -73,6 +73,39 @@ function M.check()
 			health.info(line)
 		end
 	end
+
+	health.start("xingshu: practice")
+	local practice = vim.list_extend(vim.deepcopy(config.options.practice_cmd), { "list", "--json" })
+	local ran, listed = pcall(function()
+		return vim.system(practice, { text = true }):wait(30000)
+	end)
+	if not ran or listed == nil then
+		health.error(("could not run: %s"):format(table.concat(practice, " ")))
+	elseif listed.code ~= 0 then
+		health.error(("`practice list` exited %d"):format(listed.code), { vim.trim(listed.stderr or "") })
+	else
+		local decoded, cards = pcall(vim.json.decode, listed.stdout or "")
+		if not decoded or type(cards) ~= "table" then
+			health.error("`practice list --json` did not return JSON")
+		else
+			local learnt = 0
+			for _, card in ipairs(cards) do
+				if card.learnt then
+					learnt = learnt + 1
+				end
+			end
+			health.ok(("%d cards, %d learnt"):format(#cards, learnt))
+			if learnt == 0 then
+				health.info("bare :Xingshu needs learnt cards; mark some with L in :Xingshu practice")
+			end
+		end
+	end
+
+	if pcall(require, "snacks") then
+		health.ok("snacks.nvim found; :Xingshu practice uses its picker")
+	else
+		health.info("snacks.nvim not found; :Xingshu practice falls back to vim.ui.select")
+	end
 end
 
 return M

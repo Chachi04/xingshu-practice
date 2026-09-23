@@ -36,7 +36,8 @@ function M.canvas_height(opts)
 	return M.cell_height(opts.cell_width) * opts.max_rows
 end
 
---- Delete every image this state has placed.
+--- Delete every image this state has placed, and any path list drawn in
+--- their place.
 ---
 --- Safe to call repeatedly and safe to call on a torn-down window: a stale id
 --- simply returns false. Leaving one behind paints it over the editor until
@@ -47,6 +48,17 @@ function M.clear(state)
 		pcall(backend.del, id)
 	end
 	state.images = {}
+
+	if state.text_drawn and state.canvas_buf and vim.api.nvim_buf_is_valid(state.canvas_buf) then
+		local blank = {}
+		for _ = 1, M.canvas_height(config.options) do
+			table.insert(blank, "")
+		end
+		vim.bo[state.canvas_buf].modifiable = true
+		vim.api.nvim_buf_set_lines(state.canvas_buf, 0, -1, false, blank)
+		vim.bo[state.canvas_buf].modifiable = false
+	end
+	state.text_drawn = false
 end
 
 --- Read a PNG off disk as bytes.
@@ -196,6 +208,7 @@ function M.render_text(state, results)
 	vim.bo[state.canvas_buf].modifiable = true
 	vim.api.nvim_buf_set_lines(state.canvas_buf, 0, -1, false, lines)
 	vim.bo[state.canvas_buf].modifiable = false
+	state.text_drawn = true
 	M.set_status(state, missing)
 end
 

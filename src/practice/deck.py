@@ -50,6 +50,7 @@ class Card:
         hsk: HSK level the card belongs to.
         set: Set number within that level.
         starred: Marked by the user for extra practice.
+        learnt: Marked by the user as known; drawn from by random review.
     """
 
     hanzi: str
@@ -57,6 +58,7 @@ class Card:
     hsk: int
     set: int
     starred: bool = False
+    learnt: bool = False
     id: str = field(default_factory=new_id)
 
     @property
@@ -79,6 +81,7 @@ class Card:
                 hsk=int(raw["hsk"]),
                 set=int(raw["set"]),
                 starred=bool(raw.get("starred", False)),
+                learnt=bool(raw.get("learnt", False)),
             )
         except KeyError as exc:
             raise ValueError(f"card {raw!r}: missing field {exc.args[0]!r}") from exc
@@ -175,6 +178,7 @@ class Deck:
         hsk: int | None = None,
         set: int | None = None,
         starred: bool = False,
+        learnt: bool = False,
     ) -> list[Card]:
         """Cards matching every given filter, in file order.
 
@@ -182,6 +186,7 @@ class Deck:
             hsk: Only this level.
             set: Only this set number (within ``hsk`` if that is given too).
             starred: Only starred cards.
+            learnt: Only learnt cards.
         """
         return [
             card
@@ -189,6 +194,7 @@ class Deck:
             if (hsk is None or card.hsk == hsk)
             and (set is None or card.set == set)
             and (not starred or card.starred)
+            and (not learnt or card.learnt)
         ]
 
     def get(self, ref: str) -> Card:
@@ -242,14 +248,14 @@ class Deck:
         Args:
             ref: Id or id prefix, as :meth:`get`.
             **changes: Any of ``hanzi``, ``pinyin``, ``hsk``, ``set``,
-                ``starred``; ``None`` values are ignored so callers can pass
+                ``starred``, ``learnt``; ``None`` values are ignored so callers can pass
                 unset options straight through.
 
         Raises:
             KeyError: As :meth:`get`.
             ValueError: If a field name is not editable.
         """
-        editable = {"hanzi", "pinyin", "hsk", "set", "starred"}
+        editable = {"hanzi", "pinyin", "hsk", "set", "starred", "learnt"}
         if unknown := sorted(set(changes) - editable):
             raise ValueError(f"cannot edit field(s) {', '.join(unknown)}")
 

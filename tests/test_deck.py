@@ -169,3 +169,31 @@ def test_cli_help_rejects_unknown_topic(capsys: pytest.CaptureFixture[str]) -> N
     with pytest.raises(SystemExit) as exc:
         main(["help", "nope"])
     assert exc.value.code == 2
+
+
+def test_learnt_survives_round_trip(tmp_path: Path) -> None:
+    card = {"id": "aa", "hanzi": "你", "pinyin": "nǐ", "hsk": 1, "set": 1, "learnt": True}
+    path = tmp_path / "cards.json"
+    path.write_text(json.dumps({"version": 1, "cards": [card]}))
+    deck = Deck.load(path)
+    assert deck.cards[0].learnt
+    deck.save()
+    assert json.loads(path.read_text("utf-8"))["cards"][0]["learnt"] is True
+
+
+def test_cli_learn_and_list_json(card_file: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    cards = ["--cards", str(card_file)]
+    deck = Deck.load(card_file)
+    deck.save()  # the fixture is pre-versioned; ids only stick once saved
+    card_id = deck.cards[0].id
+
+    assert main([*cards, "edit", card_id, "--learn"]) == 0
+    capsys.readouterr()
+    assert main([*cards, "list", "--learnt", "--json"]) == 0
+    listed = json.loads(capsys.readouterr().out)
+    assert [(c["id"], c["learnt"]) for c in listed] == [(card_id, True)]
+
+    assert main([*cards, "edit", card_id, "--unlearn"]) == 0
+    capsys.readouterr()
+    assert main([*cards, "list", "--learnt", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out) == []
