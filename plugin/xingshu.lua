@@ -16,6 +16,9 @@ local subcommands = {
 		end
 		require("xingshu").practice({ hsk = hsk, set = set })
 	end,
+	deck = function()
+		require("xingshu").deck()
+	end,
 }
 
 vim.api.nvim_create_user_command("Xingshu", function(cmd)
@@ -26,13 +29,13 @@ vim.api.nvim_create_user_command("Xingshu", function(cmd)
 	end
 	local run = subcommands[name]
 	if run == nil then
-		vim.notify(("xingshu: unknown subcommand %q; try type or practice"):format(name), vim.log.levels.ERROR)
+		vim.notify(("xingshu: unknown subcommand %q; try type, practice or deck"):format(name), vim.log.levels.ERROR)
 		return
 	end
 	run(vim.list_slice(cmd.fargs, 2))
 end, {
 	nargs = "*",
-	desc = "Xingshu: random learnt card, `type` to look characters up, `practice` for flashcards",
+	desc = "Xingshu: random learnt card, `type` to look characters up, `practice` for flashcards, `deck` to manage cards",
 	complete = function(arg_lead, cmdline)
 		-- Only the first argument has fixed choices; levels and sets are numbers.
 		local words = vim.split(vim.trim(cmdline), "%s+")

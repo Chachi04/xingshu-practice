@@ -7,6 +7,8 @@
 --- * `:Xingshu practice [hsk [set]]`: flashcards from the `practice` deck,
 ---   pinyin first, flipping to the sentence in xingshu.
 --- * `:Xingshu`: one random card from those marked learnt.
+---
+--- `:Xingshu deck` manages the cards themselves, in a picker and editor of its own.
 local backend = require("xingshu.backend")
 local config = require("xingshu.config")
 local deck = require("xingshu.deck")
@@ -273,6 +275,13 @@ function M.random()
 		local card = learnt[math.random(#learnt)]
 		start_practice({ card }, "learnt", { random_pool = learnt })
 	end)
+end
+
+--- Edit, add and delete cards.
+function M.deck()
+	-- The picker and editor would open over the applet's images.
+	M.close()
+	require("xingshu.manage").open()
 end
 
 --- Configure the applet. Optional; defaults work inside this repo.

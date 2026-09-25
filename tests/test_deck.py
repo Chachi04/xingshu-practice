@@ -140,6 +140,23 @@ def test_cli_add_suggests_pinyin(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert Deck.load(path).cards[0].pinyin == "wǒ hěn hǎo"
 
 
+def test_cli_edit_hanzi_regenerates_pinyin(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    cards = ["--cards", str(tmp_path / "new.json")]
+    assert main([*cards, "add", "我很好", "--hsk", "1", "--set", "1", "--pinyin", "wǒ hěn hǎo"]) == 0
+    card_id = capsys.readouterr().out.split()[0]
+
+    def pinyin() -> str:
+        return Deck.load(tmp_path / "new.json").get(card_id).pinyin
+
+    assert main([*cards, "edit", card_id, "--hsk", "2"]) == 0
+    assert pinyin() == "wǒ hěn hǎo"
+    assert main([*cards, "edit", card_id, "--hanzi", "你好"]) == 0
+    assert pinyin() == "nǐ hǎo"
+    assert "generated" in capsys.readouterr().err
+    assert main([*cards, "edit", card_id, "--hanzi", "请坐", "--pinyin", "qǐng zuò"]) == 0
+    assert pinyin() == "qǐng zuò"
+
+
 def test_cli_run_options_survive_subcommand() -> None:
     from practice.cli import build_parser
 

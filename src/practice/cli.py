@@ -81,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--hsk", type=int, required=True, help="HSK level")
     add.add_argument("--set", type=int, required=True, help="set number within the level")
     add.add_argument("--pinyin", help="tone-marked pinyin (default: generated, check it)")
+    add.add_argument("--json", action="store_true", help="print the new card as JSON")
 
     remove = commands.add_parser("rm", help="remove cards")
     remove.add_argument("ids", nargs="+", metavar="ID", help="card id or unique prefix")
@@ -97,6 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     learn = edit.add_mutually_exclusive_group()
     learn.add_argument("--learn", dest="learnt", action="store_const", const=True)
     learn.add_argument("--unlearn", dest="learnt", action="store_const", const=False)
+    edit.add_argument("--json", action="store_true", help="print the changed card as JSON")
 
     help_cmd = commands.add_parser("help", help="show help for practice or one command")
     help_cmd.add_argument(
@@ -151,7 +153,10 @@ def cmd_add(args: argparse.Namespace, deck: Deck) -> int:
     pinyin = args.pinyin or suggest_pinyin(args.hanzi)
     card = deck.add(args.hanzi, pinyin, args.hsk, args.set)
     deck.save()
-    print(f"{card.id}  {card.hsk}-{card.set}  {card.hanzi}  {card.pinyin}")
+    if args.json:
+        print(json.dumps(card.to_dict(), ensure_ascii=False))
+    else:
+        print(f"{card.id}  {card.hsk}-{card.set}  {card.hanzi}  {card.pinyin}")
     if args.pinyin is None:
         print("practice: pinyin was generated; check it", file=sys.stderr)
     return EXIT_OK
@@ -173,18 +178,29 @@ def cmd_rm(args: argparse.Namespace, deck: Deck) -> int:
 
 
 def cmd_edit(args: argparse.Namespace, deck: Deck) -> int:
-    """Change the given fields of one card and print the result."""
+    """Change the given fields of one card and print the result.
+
+    New hanzi without new pinyin regenerates the pinyin, since the old one
+    would be of a different sentence.
+    """
+    pinyin = args.pinyin
+    generated = False
+    if args.hanzi is not None and pinyin is None and args.hanzi != deck.get(args.id).hanzi:
+        pinyin = suggest_pinyin(args.hanzi)
+        generated = True
     card = deck.edit(
         args.id,
         hanzi=args.hanzi,
-        pinyin=args.pinyin,
+        pinyin=pinyin,
         hsk=args.hsk,
         set=args.set,
         starred=args.starred,
         learnt=args.learnt,
     )
     deck.save()
-    print(format_card(card))
+    print(json.dumps(card.to_dict(), ensure_ascii=False) if args.json else format_card(card))
+    if generated:
+        print("practice: pinyin was generated; check it", file=sys.stderr)
     return EXIT_OK
 
 
