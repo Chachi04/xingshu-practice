@@ -9,9 +9,13 @@ local subcommands = {
 		require("xingshu").toggle()
 	end,
 	practice = function(args)
+		if args[1] == "continue" then
+			require("xingshu").practice({ continue = true })
+			return
+		end
 		local hsk, set = tonumber(args[1]), tonumber(args[2])
 		if (args[1] and not hsk) or (args[2] and not set) then
-			vim.notify("xingshu: usage: :Xingshu practice [hsk [set]]", vim.log.levels.ERROR)
+			vim.notify("xingshu: usage: :Xingshu practice [hsk [set] | continue]", vim.log.levels.ERROR)
 			return
 		end
 		require("xingshu").practice({ hsk = hsk, set = set })
@@ -37,13 +41,17 @@ end, {
 	nargs = "*",
 	desc = "Xingshu: random learnt card, `type` to look characters up, `practice` for flashcards, `deck` to manage cards",
 	complete = function(arg_lead, cmdline)
-		-- Only the first argument has fixed choices; levels and sets are numbers.
+		-- The subcommand, then `continue` after `practice`; levels and sets are numbers.
 		local words = vim.split(vim.trim(cmdline), "%s+")
-		if #words > (arg_lead == "" and 1 or 2) then
-			return {}
+		local position = #words - (arg_lead == "" and 0 or 1)
+		local candidates = {}
+		if position == 1 then
+			candidates = vim.tbl_keys(subcommands)
+		elseif position == 2 and words[2] == "practice" then
+			candidates = { "continue" }
 		end
 		return vim.tbl_filter(function(name)
 			return vim.startswith(name, arg_lead)
-		end, vim.tbl_keys(subcommands))
+		end, candidates)
 	end,
 })

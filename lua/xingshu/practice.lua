@@ -53,13 +53,14 @@ end
 --- Turn an open, read-only applet into a card session.
 ---
 --- With `random_pool`, the session holds one card at a time and `n` draws
---- another from the pool rather than stepping through `cards`.
+--- another from the pool rather than stepping through `cards`. Otherwise the
+--- session starts at `start_index`, and `on_show` hears of every card shown.
 ---@param state table from ui.open
 ---@param cards xingshu.Card[]
----@param opts { random_pool: xingshu.Card[]? }
+---@param opts { random_pool: xingshu.Card[]?, start_index: integer?, on_show: fun(card: xingshu.Card, index: integer)? }
 ---@param hooks xingshu.PracticeHooks
 function M.attach(state, cards, opts, hooks)
-	local session = { cards = cards, index = 1, flipped = false, pool = opts.random_pool }
+	local session = { cards = cards, index = opts.start_index or 1, flipped = false, pool = opts.random_pool }
 
 	local function show()
 		local card = session.cards[session.index]
@@ -78,6 +79,10 @@ function M.attach(state, cards, opts, hooks)
 		)
 
 		hooks.draw(session.flipped and characters(card.hanzi) or "")
+
+		if opts.on_show and not session.pool then
+			opts.on_show(card, session.index)
+		end
 	end
 
 	local function flip()

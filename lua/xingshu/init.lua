@@ -5,7 +5,8 @@
 --- * `:Xingshu type`: a floating input; renderings appear beneath it as you
 ---   type, fetched from this project's `search` CLI.
 --- * `:Xingshu practice [hsk [set]]`: flashcards from the `practice` deck,
----   pinyin first, flipping to the sentence in xingshu.
+---   pinyin first, flipping to the sentence in xingshu. `:Xingshu practice
+---   continue` reopens the last session on the card it was left at.
 --- * `:Xingshu`: one random card from those marked learnt.
 ---
 --- `:Xingshu deck` manages the cards themselves, in a picker and editor of its own.
@@ -14,6 +15,7 @@ local config = require("xingshu.config")
 local deck = require("xingshu.deck")
 local render = require("xingshu.render")
 local search = require("xingshu.search")
+local session = require("xingshu.session")
 local ui = require("xingshu.ui")
 
 local M = {}
@@ -217,14 +219,36 @@ function M.toggle()
 end
 
 --- Run through `cards` in the float.
+---
+--- With a `source`, the session is saved as it goes, so it can be continued.
 ---@param cards xingshu.Card[]
 ---@param title string
----@param opts { random_pool: xingshu.Card[]? }?
+---@param opts { random_pool: xingshu.Card[]?, source: xingshu.Source?, start_index: integer? }?
 local function start_practice(cards, title, opts)
+	opts = opts or {}
 	open({ title = title, editable = false })
 	state.mode = "practice"
 	vim.cmd.stopinsert()
-	require("xingshu.practice").attach(state, cards, opts or {}, { draw = draw, close = M.close })
+
+	local on_show
+	if opts.source then
+		local saved
+		on_show = function(card, index)
+			-- Flipping shows the same card again; no need to write it twice.
+			if saved == card.id .. ":" .. index then
+				return
+			end
+			saved = card.id .. ":" .. index
+			session.save({ source = opts.source, title = title, card_id = card.id, index = index })
+		end
+	end
+
+	require("xingshu.practice").attach(
+		state,
+		cards,
+		{ random_pool = opts.random_pool, start_index = opts.start_index, on_show = on_show },
+		{ draw = draw, close = M.close }
+	)
 end
 
 --- Load the deck, reporting a failure rather than passing it on.
@@ -239,11 +263,33 @@ local function with_cards(on_loaded)
 	end)
 end
 
+--- Reopen the last practice session where it was left.
+local function continue()
+	local entry = session.load()
+	if entry == nil then
+		vim.notify("xingshu: no practice session to continue", vim.log.levels.INFO)
+		return
+	end
+	with_cards(function(cards)
+		local list = session.cards(cards, entry.source)
+		if #list == 0 then
+			vim.notify(("xingshu: nothing left in %s"):format(entry.title), vim.log.levels.WARN)
+			return
+		end
+		start_practice(list, entry.title, { source = entry.source, start_index = session.start_index(list, entry) })
+	end)
+end
+
 --- Practise a set: straight away when both level and set are given,
 --- otherwise through a picker narrowed to `hsk` if that is given.
----@param args { hsk: integer?, set: integer? }?
+--- `continue` reopens the last session instead.
+---@param args { hsk: integer?, set: integer?, continue: boolean? }?
 function M.practice(args)
 	args = args or {}
+	if args.continue then
+		continue()
+		return
+	end
 	with_cards(function(cards)
 		if args.hsk and args.set then
 			local chosen = deck.filter(cards, { hsk = args.hsk, set = args.set })
@@ -251,12 +297,16 @@ function M.practice(args)
 				vim.notify(("xingshu: no cards in HSK %d set %d"):format(args.hsk, args.set), vim.log.levels.WARN)
 				return
 			end
-			start_practice(chosen, ("HSK %d · Set %d"):format(args.hsk, args.set))
+			start_practice(
+				chosen,
+				("HSK %d · Set %d"):format(args.hsk, args.set),
+				{ source = { kind = "set", hsk = args.hsk, set = args.set } }
+			)
 			return
 		end
 
 		require("xingshu.picker").pick_set(cards, { hsk = args.hsk }, function(choice)
-			start_practice(choice.cards, choice.title)
+			start_practice(choice.cards, choice.title, { source = choice.source })
 		end)
 	end)
 end

@@ -7,6 +7,7 @@ local M = {}
 ---@field text string what the picker shows and matches on
 ---@field title string title for the practice window
 ---@field cards xingshu.Card[]
+---@field source xingshu.Source what to save, so the session can be continued
 ---@field preview { text: string }? filled in for Snacks only
 
 --- Count cards for which `field` is true.
@@ -39,6 +40,7 @@ local function choices(cards, hsk)
 			text = ("★  All starred%s  (%d cards)"):format(level, #starred),
 			title = "All starred" .. level,
 			cards = starred,
+			source = { kind = "starred", hsk = hsk },
 		})
 	end
 	local learnt = deck.filter(pool, { learnt = true })
@@ -47,6 +49,7 @@ local function choices(cards, hsk)
 			text = ("✓  All learnt%s  (%d cards)"):format(level, #learnt),
 			title = "All learnt" .. level,
 			cards = learnt,
+			source = { kind = "learnt", hsk = hsk },
 		})
 	end
 
@@ -63,6 +66,7 @@ local function choices(cards, hsk)
 			text = ("HSK %d · Set %-3d (%d cards%s)"):format(set.hsk, set.set, #set.cards, marks),
 			title = ("HSK %d · Set %d"):format(set.hsk, set.set),
 			cards = set.cards,
+			source = { kind = "set", hsk = set.hsk, set = set.set },
 		})
 	end
 	return items
